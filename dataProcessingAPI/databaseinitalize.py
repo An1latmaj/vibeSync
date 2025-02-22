@@ -86,7 +86,7 @@ def create_tables(conn, cursor):
         # Create users table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            user_id BIGINT PRIMARY KEY,
+            user_id SERIAL PRIMARY KEY,
             uname VARCHAR(15) NOT NULL,
             email VARCHAR(320),
             passhash VARCHAR(128),
@@ -132,12 +132,28 @@ def create_tables(conn, cursor):
                 UNIQUE(artist_id, album_id, name)
             );
         """)
+        # Create listening_history table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS listening_history (
+                history_id SERIAL PRIMARY KEY,
+                user_id BIGINT REFERENCES users(user_id),
+                track_id BIGINT REFERENCES tracks(track_id),
+                listened_at TIMESTAMP NOT NULL,
+                ms_played INTEGER NOT NULL,
+                UNIQUE(user_id, track_id, listened_at)
+            );
+        """)
 
         # Create indexes for better query performance
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
             CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
             CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_listening_history_user ON listening_history(user_id);
+            CREATE INDEX IF NOT EXISTS idx_listening_history_track ON listening_history(track_id);
+            CREATE INDEX IF NOT EXISTS idx_listening_history_time ON listening_history(listened_at);
         """)
 
         conn.commit()
@@ -151,7 +167,7 @@ def create_tables(conn, cursor):
 
 def verify_tables(cursor):
     """Verify that all tables were created correctly"""
-    tables = ['users', 'artists', 'albums', 'tracks']
+    tables = ['users', 'artists', 'albums', 'tracks', 'listening_history']
     for table in tables:
         try:
             cursor.execute("""
