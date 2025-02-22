@@ -64,7 +64,7 @@ def filter_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Convert timestamp
     processed["ts"] = pd.to_datetime(processed["ts"])
-    #cleanign strings
+    # Cleanign strings
     string_columns = [
         "master_metadata_track_name",
         "master_metadata_album_artist_name",
