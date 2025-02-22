@@ -64,7 +64,7 @@ def filter_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Convert timestamp
     processed["ts"] = pd.to_datetime(processed["ts"])
-    # Cleanign strings
+    #cleanign strings
     string_columns = [
         "master_metadata_track_name",
         "master_metadata_album_artist_name",
@@ -81,9 +81,10 @@ def filter_data(data: pd.DataFrame) -> pd.DataFrame:
         "master_metadata_album_artist_name": "artist_name",
         "master_metadata_album_album_name": "album_name"
     }
-
     processed.rename(columns=column_mapping, inplace=True)
+    print(len(processed.groupby("artist_name").count()))
     return processed
+
 
 
 def insert_artists(conn, df: pd.DataFrame) -> Dict[str, int]:
@@ -94,7 +95,7 @@ def insert_artists(conn, df: pd.DataFrame) -> Dict[str, int]:
     artists = df[['artist_name']].drop_duplicates()['artist_name'].tolist()
     artist_records = [(name,) for name in artists]
 
-    # Insert artists and get their IDs
+    # First, insert all artists
     execute_values(
         cursor,
         """
@@ -102,18 +103,31 @@ def insert_artists(conn, df: pd.DataFrame) -> Dict[str, int]:
         VALUES %s
         ON CONFLICT (name) DO UPDATE 
         SET name = EXCLUDED.name
-        RETURNING artist_id, name
         """,
         artist_records,
         template="(%s)"
     )
 
+    # Then, fetch all artists separately
+    cursor.execute("""
+        SELECT artist_id, name 
+        FROM artists 
+        WHERE name = ANY(%s)
+    """, (artists,))
+
     results = cursor.fetchall()
-    return {name: artist_id for artist_id, name in results}
+    artist_mapping = {name: artist_id for artist_id, name in results}
+
+    # Validate we got all mappings
+    missing_artists = set(artists) - set(artist_mapping.keys())
+    if missing_artists:
+        raise ValueError(f"Failed to get mappings for artists: {missing_artists}")
+
+    return artist_mapping
 
 
 def insert_albums(conn, df: pd.DataFrame, artist_mapping: Dict[str, int]) -> Dict[Tuple[str, str], int]:
-    """Insert albums and return (name, artist_name)-to-id mapping"""
+    """Insert albums and return (name, artist_id)-to-id mapping"""
     cursor = conn.cursor()
 
     # Prepare unique albums data
@@ -123,7 +137,7 @@ def insert_albums(conn, df: pd.DataFrame, artist_mapping: Dict[str, int]) -> Dic
         artist_mapping[row['artist_name']]
     ) for _, row in albums_data.iterrows()]
 
-    # Insert albums
+    # First, insert all albums
     execute_values(
         cursor,
         """
@@ -131,20 +145,44 @@ def insert_albums(conn, df: pd.DataFrame, artist_mapping: Dict[str, int]) -> Dic
         VALUES %s
         ON CONFLICT (name, artist_id) DO UPDATE 
         SET name = EXCLUDED.name
-        RETURNING album_id, name, artist_id
         """,
         album_records,
         template="(%s, %s)"
     )
 
+    # Then fetch all albums separately
+    # Create lists for the WHERE clause
+    album_names = albums_data['album_name'].tolist()
+    artist_ids = [artist_mapping[artist_name] for artist_name in albums_data['artist_name']]
+
+    cursor.execute("""
+        SELECT album_id, name, artist_id 
+        FROM albums 
+        WHERE (name, artist_id) IN (
+            SELECT unnest(%s), unnest(%s)
+        )
+    """, (album_names, artist_ids))
+
     results = cursor.fetchall()
-    # Create composite key mapping using album name and artist_id
-    return {(name, artist_id): album_id for album_id, name, artist_id in results}
+    album_mapping = {(name, artist_id): album_id for album_id, name, artist_id in results}
+
+    # Validate we got all mappings
+    expected_keys = set((row['album_name'], artist_mapping[row['artist_name']])
+                        for _, row in albums_data.iterrows())
+    missing_albums = expected_keys - set(album_mapping.keys())
+
+    if missing_albums:
+        print(f"Number of albums expected: {len(expected_keys)}")
+        print(f"Number of albums received: {len(album_mapping)}")
+        print(f"Missing albums: {missing_albums}")
+        raise ValueError(f"Failed to get mappings for albums: {missing_albums}")
+
+    return album_mapping
 
 
 def insert_tracks(conn, df: pd.DataFrame, artist_mapping: Dict[str, int],
                   album_mapping: Dict[Tuple[str, str], int]) -> Dict[Tuple[str, str, str], int]:
-    """Insert tracks and return (name, album_name, artist_name)-to-id mapping"""
+    """Insert tracks and return (name, artist_id, album_id)-to-id mapping"""
     cursor = conn.cursor()
 
     # Prepare unique tracks data
@@ -155,7 +193,7 @@ def insert_tracks(conn, df: pd.DataFrame, artist_mapping: Dict[str, int],
         album_mapping[(row['album_name'], artist_mapping[row['artist_name']])]
     ) for _, row in tracks_data.iterrows()]
 
-    # Insert tracks
+    # First, insert all tracks
     execute_values(
         cursor,
         """
@@ -163,16 +201,41 @@ def insert_tracks(conn, df: pd.DataFrame, artist_mapping: Dict[str, int],
         VALUES %s
         ON CONFLICT (name, artist_id, album_id) DO UPDATE 
         SET name = EXCLUDED.name
-        RETURNING track_id, name, artist_id, album_id
         """,
         track_records,
         template="(%s, %s, %s)"
     )
 
-    results = cursor.fetchall()
-    # Create composite key mapping
-    return {(name, artist_id, album_id): track_id for track_id, name, artist_id, album_id in results}
+    # Then fetch all tracks
+    cursor.execute("""
+        SELECT track_id, name, artist_id, album_id 
+        FROM tracks 
+        WHERE (name, artist_id, album_id) IN (
+            SELECT t.name, t.artist_id, t.album_id
+            FROM unnest(%s::text[], %s::integer[], %s::integer[]) 
+            AS t(name, artist_id, album_id)
+        )
+    """, (
+        [rec[0] for rec in track_records],
+        [rec[1] for rec in track_records],
+        [rec[2] for rec in track_records]
+    ))
 
+    results = cursor.fetchall()
+    track_mapping = {(name, artist_id, album_id): track_id
+                     for track_id, name, artist_id, album_id in results}
+
+    # Validate we got all mappings
+    expected_keys = set((rec[0], rec[1], rec[2]) for rec in track_records)
+    missing_tracks = expected_keys - set(track_mapping.keys())
+
+    if missing_tracks:
+        print(f"Number of tracks expected: {len(expected_keys)}")
+        print(f"Number of tracks received: {len(track_mapping)}")
+        print(f"Missing tracks: {missing_tracks}")
+        raise ValueError(f"Failed to get mappings for tracks: {missing_tracks}")
+
+    return track_mapping
 
 def insert_listening_history(conn, df: pd.DataFrame, user_id: int,
                              artist_mapping: Dict[str, int],
@@ -208,7 +271,46 @@ def insert_listening_history(conn, df: pd.DataFrame, user_id: int,
     )
 
 
-def import_spotify_history(user_id: int, directory_path: str):
+def get_or_create_user(conn, username: str) -> int:
+    """
+    Get user ID by username or create new user if doesn't exist
+    Returns the user_id
+    """
+    cursor = conn.cursor()
+    try:
+        # First try to get existing user
+        cursor.execute("""
+            SELECT user_id FROM users 
+            WHERE uname = %s
+        """, (username,))
+
+        result = cursor.fetchone()
+
+        if result:
+            user_id = result[0]
+            print(f"Found existing user '{username}' with ID: {user_id}")
+            return user_id
+
+        # If user doesn't exist, create new user
+        cursor.execute("""
+            INSERT INTO users (uname)
+            VALUES (%s)
+            RETURNING user_id
+        """, (username,))
+
+        user_id = cursor.fetchone()[0]
+        conn.commit()
+        print(f"Created new user '{username}' with ID: {user_id}")
+        return user_id
+
+    except Exception as e:
+        conn.rollback()
+        raise ValueError(f"Failed to get or create user: {str(e)}")
+    finally:
+        cursor.close()
+
+
+def import_spotify_history(username: str, directory_path: str):
     """Main function to import Spotify history"""
     try:
         # Read and process data
@@ -219,6 +321,9 @@ def import_spotify_history(user_id: int, directory_path: str):
         conn = get_db_connection()
 
         try:
+            # Get or create user and get their ID
+            user_id = get_or_create_user(conn, username)
+
             # Insert data in order of dependencies
             artist_mapping = insert_artists(conn, processed_data)
             album_mapping = insert_albums(conn, processed_data, artist_mapping)
@@ -228,7 +333,7 @@ def import_spotify_history(user_id: int, directory_path: str):
 
             # Commit all changes
             conn.commit()
-            print(f"Successfully imported {len(processed_data)} listening records!")
+            print(f"Successfully imported {len(processed_data)} listening records for user '{username}'!")
 
         except Exception as e:
             conn.rollback()
@@ -242,7 +347,8 @@ def import_spotify_history(user_id: int, directory_path: str):
         raise
 
 
+# Usage example
 if __name__ == "__main__":
-    USER_ID = 1  # Replace with actual user ID
-    SPOTIFY_DATA_DIR = "/home/anilatmaj/Downloads/tehee/Spotify Extended Streaming History"  # Replace with actual path
-    import_spotify_history(USER_ID, SPOTIFY_DATA_DIR)
+    USERNAME = "" #insert username u wanna fetch
+    SPOTIFY_DATA_DIR = "" #insert path
+    import_spotify_history(USERNAME, SPOTIFY_DATA_DIR)
