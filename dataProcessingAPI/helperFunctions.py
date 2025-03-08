@@ -10,14 +10,14 @@ load_dotenv()
 
 
 def get_db_connection():
-    """Create a database connection"""
-    return psycopg2.connect(
+    conn= psycopg2.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD")
     )
+    return conn;
 
 
 def read_files(dir_path: str) -> pd.DataFrame:
@@ -309,46 +309,3 @@ def get_or_create_user(conn, username: str) -> int:
     finally:
         cursor.close()
 
-
-def import_spotify_history(username: str, directory_path: str):
-    """Main function to import Spotify history"""
-    try:
-        # Read and process data
-        raw_data = read_files(directory_path)
-        processed_data = filter_data(raw_data)
-
-        # Connect to database
-        conn = get_db_connection()
-
-        try:
-            # Get or create user and get their ID
-            user_id = get_or_create_user(conn, username)
-
-            # Insert data in order of dependencies
-            artist_mapping = insert_artists(conn, processed_data)
-            album_mapping = insert_albums(conn, processed_data, artist_mapping)
-            track_mapping = insert_tracks(conn, processed_data, artist_mapping, album_mapping)
-            insert_listening_history(conn, processed_data, user_id,
-                                     artist_mapping, album_mapping, track_mapping)
-
-            # Commit all changes
-            conn.commit()
-            print(f"Successfully imported {len(processed_data)} listening records for user '{username}'!")
-
-        except Exception as e:
-            conn.rollback()
-            raise e
-
-        finally:
-            conn.close()
-
-    except Exception as e:
-        print(f"Error importing Spotify history: {str(e)}")
-        raise
-
-
-# Usage example
-if __name__ == "__main__":
-    USERNAME = "" #insert username u wanna fetch
-    SPOTIFY_DATA_DIR = "" #insert path
-    import_spotify_history(USERNAME, SPOTIFY_DATA_DIR)
