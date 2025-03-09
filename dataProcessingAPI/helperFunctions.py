@@ -5,7 +5,7 @@ import os
 from typing import Dict, Any, Tuple, List
 from datetime import datetime
 from dotenv import load_dotenv
-
+from pypika import Query,Order,Table, functions as fn
 load_dotenv()
 
 
@@ -17,11 +17,10 @@ def get_db_connection():
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD")
     )
-    return conn;
+    return conn
 
 
 def read_files(dir_path: str) -> pd.DataFrame:
-    """Read all JSON files from directory and combine them"""
     if not os.path.exists(dir_path):
         raise FileNotFoundError(f"Directory not found: {dir_path}")
 
@@ -42,8 +41,7 @@ def read_files(dir_path: str) -> pd.DataFrame:
 
 
 def filter_data(data: pd.DataFrame) -> pd.DataFrame:
-    """Filter and process streaming history data"""
-    # Keep only essential columns
+    #keep only essential columns
     essential_columns = [
         "ts",
         "ms_played",
@@ -51,10 +49,8 @@ def filter_data(data: pd.DataFrame) -> pd.DataFrame:
         "master_metadata_album_artist_name",
         "master_metadata_album_album_name"
     ]
-    # Filter data
     processed = data[essential_columns].copy()
 
-    # Apply filters
     processed = processed[
         (~processed["master_metadata_track_name"].isna()) &
         (processed["ms_played"] > 30000)  # 30 seconds minimum
@@ -62,9 +58,8 @@ def filter_data(data: pd.DataFrame) -> pd.DataFrame:
         ]
     processed = processed.dropna()
 
-    # Convert timestamp
     processed["ts"] = pd.to_datetime(processed["ts"])
-    # Cleanign strings
+    #cleanign strings
     string_columns = [
         "master_metadata_track_name",
         "master_metadata_album_artist_name",
@@ -75,7 +70,7 @@ def filter_data(data: pd.DataFrame) -> pd.DataFrame:
         processed[col] = processed[col].str.replace('\n', '')  # Remove newlines
         processed[col] = processed[col].str.replace('\r', '')  # Remove carriage returns
         processed[col] = processed[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
-    # Rename columns
+    #rename columns
     column_mapping = {
         "master_metadata_track_name": "track_name",
         "master_metadata_album_artist_name": "artist_name",
@@ -88,14 +83,10 @@ def filter_data(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def insert_artists(conn, df: pd.DataFrame) -> Dict[str, int]:
-    """Insert artists and return name-to-id mapping"""
     cursor = conn.cursor()
-
-    # Prepare unique artists data
     artists = df[['artist_name']].drop_duplicates()['artist_name'].tolist()
     artist_records = [(name,) for name in artists]
 
-    # First, insert all artists
     execute_values(
         cursor,
         """
@@ -107,8 +98,6 @@ def insert_artists(conn, df: pd.DataFrame) -> Dict[str, int]:
         artist_records,
         template="(%s)"
     )
-
-    # Then, fetch all artists separately
     cursor.execute("""
         SELECT artist_id, name 
         FROM artists 
@@ -118,7 +107,7 @@ def insert_artists(conn, df: pd.DataFrame) -> Dict[str, int]:
     results = cursor.fetchall()
     artist_mapping = {name: artist_id for artist_id, name in results}
 
-    # Validate we got all mappings
+    #validate we got all mappings
     missing_artists = set(artists) - set(artist_mapping.keys())
     if missing_artists:
         raise ValueError(f"Failed to get mappings for artists: {missing_artists}")
@@ -127,17 +116,15 @@ def insert_artists(conn, df: pd.DataFrame) -> Dict[str, int]:
 
 
 def insert_albums(conn, df: pd.DataFrame, artist_mapping: Dict[str, int]) -> Dict[Tuple[str, str], int]:
-    """Insert albums and return (name, artist_id)-to-id mapping"""
     cursor = conn.cursor()
 
-    # Prepare unique albums data
+    #preparing unique albums data
     albums_data = df[['album_name', 'artist_name']].drop_duplicates()
     album_records = [(
         row['album_name'],
         artist_mapping[row['artist_name']]
     ) for _, row in albums_data.iterrows()]
 
-    # First, insert all albums
     execute_values(
         cursor,
         """
@@ -150,8 +137,8 @@ def insert_albums(conn, df: pd.DataFrame, artist_mapping: Dict[str, int]) -> Dic
         template="(%s, %s)"
     )
 
-    # Then fetch all albums separately
-    # Create lists for the WHERE clause
+    #then fetch all albums separately
+    #create lists for the WHERE clause
     album_names = albums_data['album_name'].tolist()
     artist_ids = [artist_mapping[artist_name] for artist_name in albums_data['artist_name']]
 
@@ -166,7 +153,6 @@ def insert_albums(conn, df: pd.DataFrame, artist_mapping: Dict[str, int]) -> Dic
     results = cursor.fetchall()
     album_mapping = {(name, artist_id): album_id for album_id, name, artist_id in results}
 
-    # Validate we got all mappings
     expected_keys = set((row['album_name'], artist_mapping[row['artist_name']])
                         for _, row in albums_data.iterrows())
     missing_albums = expected_keys - set(album_mapping.keys())
@@ -182,10 +168,7 @@ def insert_albums(conn, df: pd.DataFrame, artist_mapping: Dict[str, int]) -> Dic
 
 def insert_tracks(conn, df: pd.DataFrame, artist_mapping: Dict[str, int],
                   album_mapping: Dict[Tuple[str, str], int]) -> Dict[Tuple[str, str, str], int]:
-    """Insert tracks and return (name, artist_id, album_id)-to-id mapping"""
     cursor = conn.cursor()
-
-    # Prepare unique tracks data
     tracks_data = df[['track_name', 'album_name', 'artist_name']].drop_duplicates()
     track_records = [(
         row['track_name'],
@@ -193,7 +176,6 @@ def insert_tracks(conn, df: pd.DataFrame, artist_mapping: Dict[str, int],
         album_mapping[(row['album_name'], artist_mapping[row['artist_name']])]
     ) for _, row in tracks_data.iterrows()]
 
-    # First, insert all tracks
     execute_values(
         cursor,
         """
@@ -206,7 +188,6 @@ def insert_tracks(conn, df: pd.DataFrame, artist_mapping: Dict[str, int],
         template="(%s, %s, %s)"
     )
 
-    # Then fetch all tracks
     cursor.execute("""
         SELECT track_id, name, artist_id, album_id 
         FROM tracks 
@@ -225,7 +206,6 @@ def insert_tracks(conn, df: pd.DataFrame, artist_mapping: Dict[str, int],
     track_mapping = {(name, artist_id, album_id): track_id
                      for track_id, name, artist_id, album_id in results}
 
-    # Validate we got all mappings
     expected_keys = set((rec[0], rec[1], rec[2]) for rec in track_records)
     missing_tracks = expected_keys - set(track_mapping.keys())
 
@@ -244,7 +224,6 @@ def insert_listening_history(conn, df: pd.DataFrame, user_id: int,
     """Insert listening history records"""
     cursor = conn.cursor()
 
-    # Prepare listening history records
     history_records = []
     for _, row in df.iterrows():
         artist_id = artist_mapping[row['artist_name']]
@@ -258,7 +237,7 @@ def insert_listening_history(conn, df: pd.DataFrame, user_id: int,
             row['ms_played']
         ))
 
-    # Insert history
+    #insert history
     execute_values(
         cursor,
         """
@@ -272,13 +251,9 @@ def insert_listening_history(conn, df: pd.DataFrame, user_id: int,
 
 
 def get_or_create_user(conn, username: str) -> int:
-    """
-    Get user ID by username or create new user if doesn't exist
-    Returns the user_id
-    """
+
     cursor = conn.cursor()
     try:
-        # First try to get existing user
         cursor.execute("""
             SELECT user_id FROM users 
             WHERE uname = %s
@@ -291,7 +266,7 @@ def get_or_create_user(conn, username: str) -> int:
             print(f"Found existing user '{username}' with ID: {user_id}")
             return user_id
 
-        # If user doesn't exist, create new user
+        #if user doesn't exist, create new user
         cursor.execute("""
             INSERT INTO users (uname)
             VALUES (%s)
@@ -308,4 +283,61 @@ def get_or_create_user(conn, username: str) -> int:
         raise ValueError(f"Failed to get or create user: {str(e)}")
     finally:
         cursor.close()
+
+
+def fetch_top_items(conn, user_id: int, start_time: datetime, end_time: datetime, top_n: int, category: str) -> List[Dict[str, Any]]:
+    listening_history = Table('listening_history')
+    tracks = Table('tracks')
+    albums = Table('albums')
+    artists = Table('artists')
+
+    if category == 'artists':
+        query = (
+            Query.from_(listening_history)
+            .join(tracks).on(listening_history.track_id == tracks.track_id)
+            .join(artists).on(tracks.artist_id == artists.artist_id)
+            .select(artists.name, fn.Count('*').as_('play_count'))
+            .where(
+                (listening_history.user_id == user_id) &
+                (listening_history.listened_at.between(start_time, end_time))
+            )
+            .groupby(artists.name)
+            .orderby(fn.Count('*'), order=Order.desc)  # Changed from fn.Order.desc
+            .limit(top_n)
+        )
+    elif category == 'albums':
+        query = (
+            Query.from_(listening_history)
+            .join(tracks).on(listening_history.track_id == tracks.track_id)
+            .join(albums).on(tracks.album_id == albums.album_id)
+            .select(albums.name, fn.Count('*').as_('play_count'))
+            .where(
+                (listening_history.user_id == user_id) &
+                (listening_history.listened_at.between(start_time, end_time))
+            )
+            .groupby(albums.name)
+            .orderby(fn.Count('*'), order=Order.desc)
+            .limit(top_n)
+        )
+    elif category == 'tracks':
+        query = (
+            Query.from_(listening_history)
+            .join(tracks).on(listening_history.track_id == tracks.track_id)
+            .select(tracks.name, fn.Count('*').as_('play_count'))
+            .where(
+                (listening_history.user_id == user_id) &
+                (listening_history.listened_at.between(start_time, end_time))
+            )
+            .groupby(tracks.name)
+            .orderby(fn.Count('*'), order=Order.desc)
+            .limit(top_n)
+        )
+    else:
+        raise ValueError("Invalid category")
+
+    cursor = conn.cursor()
+    cursor.execute(query.get_sql())
+    results = cursor.fetchall()
+    cursor.close()
+    return [{"name": row[0], "play_count": row[1]} for row in results]
 
