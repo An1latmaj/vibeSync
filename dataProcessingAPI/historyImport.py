@@ -1,22 +1,36 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, status, Query
 from fastapi.responses import JSONResponse
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 import os
 import shutil
 import tempfile
 import time
 from contextlib import contextmanager
+from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
+
+
 #import my existing functions
 from helperFunctions import (
     get_db_connection, read_files, filter_data,
     get_or_create_user, insert_artists, insert_albums,
-    insert_tracks, insert_listening_history
+    insert_tracks, insert_listening_history,
+    fetch_top_items
 )
+
 app = FastAPI(
     title="Spotify History API",
     description="API for importing and querying Spotify listening history",
     version="1.0.0"
+)
+# Add this after creating your FastAPI app instance
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 class StatusResponse(BaseModel):
     status: str
@@ -26,6 +40,12 @@ class StatusResponse(BaseModel):
 class ImportRequest(BaseModel):
     username: str=Field(..., min_length=1, max_length=15)
 
+class TimeRangeRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=15)
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    top_n: int = Field(..., gt=0)
+    category: str = Field(..., pattern="^(artists|tracks|albums)$")
 task_status = {}
 
 @app.get("/")
@@ -117,9 +137,9 @@ async def import_spotify_files(
         #clean up on error
         shutil.rmtree(temp_dir)
         raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/import/status/{task_id}", response_model=StatusResponse)
 async def get_import_status(task_id: str):
-    """Check status of an import task"""
     if task_id not in task_status:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -129,6 +149,23 @@ async def get_import_status(task_id: str):
         message=task["message"],
         task_id=task_id
     )
+
+
+@app.post("/top", response_model=List[Dict[str, Any]])
+async def get_top_items(request: TimeRangeRequest):
+    #set default values if dates are not provided
+    if request.start_time is None:
+        request.start_time = datetime(2000, 1, 1)
+
+    if request.end_time is None:
+        #default to current time
+        request.end_time = datetime.now()
+
+    with get_db() as conn:
+        user_id = get_or_create_user(conn, request.username)
+        result = fetch_top_items(conn, user_id, request.start_time, request.end_time, request.top_n, request.category)
+    return result
+
 @app.get("/health")
 async def health_check():
     try:
