@@ -24,7 +24,6 @@ app = FastAPI(
     description="API for importing and querying Spotify listening history",
     version="1.0.0"
 )
-# Add this after creating your FastAPI app instance
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
