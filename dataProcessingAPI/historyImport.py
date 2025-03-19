@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 #import my existing functions
-from helperFunctions import (
+from apiFuncts import (
     get_db_connection, read_files, filter_data,
     get_or_create_user, insert_artists, insert_albums,
     insert_tracks, insert_listening_history,
@@ -24,6 +24,7 @@ app = FastAPI(
     description="API for importing and querying Spotify listening history",
     version="1.0.0"
 )
+# Add this after creating your FastAPI app instance
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
@@ -193,4 +194,3 @@ async def general_exception_handler(request, exc):
         status_code=500,
         content={"status": "error", "message": f"Unexpected error: {str(exc)}"}
     )
-
