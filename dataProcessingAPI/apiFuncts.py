@@ -340,4 +340,3 @@ def fetch_top_items(conn, user_id: int, start_time: datetime, end_time: datetime
     results = cursor.fetchall()
     cursor.close()
     return [{"name": row[0], "play_count": row[1]} for row in results]
-
