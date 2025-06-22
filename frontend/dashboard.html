@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Stats - VibeSync</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">VibeSync</div>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="index.html#features">Features</a></li>
+                <li><a href="upload.html" class="btn-small">Get Started</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="dashboard">
+        <div class="dashboard-header">
+            <h1>Your Music Stats</h1>
+            <p>Welcome <span id="user-name">there</span>! Explore your listening habits below.</p>
+        </div>
+
+        <div class="query-controls">
+            <div class="query-form">
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category">
+                        <option value="artists">Artists</option>
+                        <option value="albums">Albums</option>
+                        <option value="tracks">Tracks</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="time-range">Time Range</label>
+                    <select id="time-range">
+                        <option value="all-time">All Time</option>
+                        <option value="this-year">This Year</option>
+                        <option value="last-year">Last Year</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+
+                <div class="date-range" id="custom-range" style="display: none;">
+                    <div class="form-group">
+                        <label for="start-date">Start Date</label>
+                        <input type="date" id="start-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="end-date">End Date</label>
+                        <input type="date" id="end-date">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="top-n">Number of Results</label>
+                    <input type="number" id="top-n" value="10" min="1" max="50">
+                </div>
+
+                <button id="query-btn" class="btn-medium">Show Results</button>
+            </div>
+        </div>
+
+        <div class="results-container">
+            <div class="results-header">
+                <h2>Your Top <span id="result-category">Artists</span></h2>
+                <p id="results-time-range">All Time</p>
+            </div>
+
+            <div id="results-list" class="results-list">
+                <!-- Results will be loaded here -->
+                <div class="loading-indicator">
+                    <div class="loader"></div>
+                    <p>Loading your stats...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2023 VibeSync. All rights reserved.</p>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

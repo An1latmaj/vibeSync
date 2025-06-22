@@ -1,0 +1,483 @@
+/* Base styles and resets */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f9f9f9;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    margin-bottom: 0.5em;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.8em;
+}
+
+h2 {
+    font-size: 2rem;
+    margin-bottom: 1em;
+}
+
+h3 {
+    font-size: 1.5rem;
+}
+
+p {
+    margin-bottom: 1em;
+}
+
+/* Navigation */
+header {
+    background-color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 5%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1DB954; /* Spotify green */
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+}
+
+nav ul li {
+    margin-left: 2rem;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+    color: #1DB954;
+}
+
+/* Buttons */
+.btn-small, .btn-medium, .btn-large {
+    display: inline-block;
+    background-color: #1DB954;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.btn-medium {
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
+}
+
+.btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
+
+.btn-small:hover, .btn-medium:hover, .btn-large:hover {
+    background-color: #19a04a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(29, 185, 84, 0.3);
+}
+
+.btn-small.active {
+    background-color: #19a04a;
+}
+
+/* Hero Section */
+.hero {
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('../assets/images/hero.png');
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-align: center;
+    padding-top: 70px; /* For fixed navbar */
+}
+
+.hero-content {
+    max-width: 800px;
+    padding: 0 2rem;
+}
+
+.hero h1 {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    animation: fadeInUp 1s ease;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    animation: fadeInUp 1s ease 0.2s;
+    animation-fill-mode: both;
+}
+
+/* Features Section */
+.features {
+    padding: 5rem 2rem;
+    text-align: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.feature-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* How It Works Section */
+.how-it-works {
+    background-color: #f1f1f1;
+    padding: 5rem 2rem;
+    text-align: center;
+}
+
+.steps {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 3rem;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.step {
+    flex: 1;
+    min-width: 250px;
+    max-width: 350px;
+    background-color: white;
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    background-color: #1DB954;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin: 0 auto 1rem;
+}
+
+/* Upload Page Styles */
+.upload-container {
+    max-width: 800px;
+    margin: 120px auto 5rem;
+    padding: 0 2rem;
+}
+
+.upload-intro {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.upload-form {
+    background-color: white;
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+input[type="text"], select, input[type="number"], input[type="date"] {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border 0.3s ease;
+}
+
+input[type="text"]:focus, select:focus, input[type="number"]:focus, input[type="date"]:focus {
+    border-color: #1DB954;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.2);
+}
+
+.file-upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 5px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-upload-area:hover, .file-upload-area.dragover {
+    border-color: #1DB954;
+    background-color: rgba(29, 185, 84, 0.05);
+}
+
+.upload-prompt svg {
+    margin-bottom: 1rem;
+    color: #888;
+}
+
+.browse-link {
+    color: #1DB954;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.file-list {
+    margin-top: 1rem;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+}
+
+.file-name {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.remove-file {
+    color: #ff4d4d;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.upload-status {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.status-indicator {
+    background-color: white;
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+/* Dashboard Styles */
+.dashboard {
+    max-width: 1200px;
+    margin: 120px auto 5rem;
+    padding: 0 2rem;
+}
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.query-controls {
+    background-color: white;
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 3rem;
+}
+
+.query-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+.date-range {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.results-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.results-list {
+    min-height: 400px;
+}
+
+.result-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    transition: transform 0.2s ease;
+}
+
+.result-item:hover {
+    transform: translateX(5px);
+}
+
+.result-rank {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1DB954;
+    margin-right: 1.5rem;
+    min-width: 30px;
+}
+
+.result-info {
+    flex: 1;
+}
+
+.result-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.result-plays {
+    color: #777;
+    font-size: 0.9rem;
+}
+
+/* Loading spinner */
+.loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #1DB954;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 3rem 0;
+    color: #777;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 2rem;
+    background-color: #333;
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .step {
+        min-width: 100%;
+    }
+
+    .query-form {
+        grid-template-columns: 1fr;
+    }
+
+    .date-range {
+        grid-template-columns: 1fr;
+    }
+}
