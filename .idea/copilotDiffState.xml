@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/apple-music-ingestion-service/models.py">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/apple-music-ingestion-service/models.py" />
+              <option name="originalContent" value="&#10;class IngestResponse(BaseModel):&#10;    job_id: UUID&#10;    status: str&#10;&#10;class JobRow(BaseModel):&#10;    id: UUID&#10;    user_id: UUID&#10;    source_id: UUID&#10;    status: str&#10;    uploaded_at: Optional[str]&#10;    stats: Optional[dict]" />
+              <option name="updatedContent" value="from pydantic import BaseModel, Field&#10;from typing import Optional&#10;from uuid import UUID&#10;&#10;class IngestResponse(BaseModel):&#10;    job_id: UUID&#10;    status: str&#10;&#10;class JobRow(BaseModel):&#10;    id: UUID&#10;    user_id: UUID&#10;    source_id: UUID&#10;    status: str&#10;    uploaded_at: Optional[str]&#10;    stats: Optional[dict]" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
