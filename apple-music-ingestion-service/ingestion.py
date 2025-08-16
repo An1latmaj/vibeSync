@@ -381,7 +381,6 @@ async def normalize_job(conn, job_id: str, source_id: str) -> Dict[str, Any]:
                             "platform": "apple_music",
                             "is_user_initiated": r.is_user_initiated,
                             "original_track_name": track_name,
-                            "note": "duration_ms set to 30001ms as Apple Music Track Play History doesn't provide actual play duration"
                         })
                     })
 
