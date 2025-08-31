@@ -1,0 +1,51 @@
+services:
+  analytics-service:
+    build:
+      context: .                       
+      dockerfile: analytics-service/Dockerfile
+    container_name: analytics-service
+    ports:
+      - "8002:8002"
+    depends_on:
+      - db
+    #environment:
+      
+
+  apple-music-ingestion-service:
+    build:
+      context: .
+      dockerfile: apple-music-ingestion-service/Dockerfile
+    container_name: apple-music-ingestion-service
+    ports:
+      - "3002:3002"
+    depends_on:
+      - db
+    #environment:
+      
+
+  spotify-ingestion-service:
+    build:
+      context: .
+      dockerfile: spotify-ingestion-service/Dockerfile
+    container_name: spotify-ingestion-service
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    #environment:
+
+  db:
+    image: postgres:15
+    container_name: music-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: music_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+
+volumes:
+  pgdata:
