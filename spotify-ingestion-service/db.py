@@ -14,3 +14,4 @@ engine: AsyncEngine = create_async_engine(DATABASE_URL, future=True, echo=False)
 
 async def get_connection() -> AsyncConnection:
     return await engine.connect()
+    
